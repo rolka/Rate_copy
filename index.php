@@ -1,3 +1,143 @@
+<?php
+
+$output;
+
+if(isset($_POST['number']) && isset($_POST['email']))
+{
+  
+  $output = 'Something wrong with the form';
+
+  if(isValidNumber($_POST['number']) && (isValidEmail($_POST['email']) || $_POST['email'] == 'Enter your email(optional)'))
+  {
+    $number = $_POST['number'];
+    $email = validateEmail($_POST['email']);
+
+    $conn = new mysqli('muhibindiancuisine.com', 'muhibind_2012', 'rzabul01', 'muhibind_01');
+    
+    $response = array();
+    // get results 
+    $myArray = $conn->query("SELECT number FROM emails");
+      
+    // fetch associative array 
+    while($row = $myArray->fetch_assoc())
+    {
+      $response[] = $row['number'];
+    }
+
+    if(in_array($number, $response))
+    {
+      $output = 'This number has been already used';
+    }
+    else
+    {
+      $result = $conn->query("INSERT INTO emails (email, number) values ('$email', '$number')");
+
+      if($result)
+      {
+        $output = 'Thanks for subscribing';
+      }
+      else
+      {
+        $output = 'Something went wrong with the connection, please go back and try again';
+      }
+    }
+  }
+}
+else // display errors
+{
+  $output = '';
+}
+
+function isValidNumber($numberIn)
+{
+  if(ctype_digit($numberIn) && strlen($numberIn) > 9 && strlen($numberIn) < 15)
+  {
+    return true;
+  }
+  return false;
+}
+
+function validateEmail($emailIn)
+{
+  if($emailIn == 'Enter your email(optional)')
+  {
+    return  'email not provided';
+  }
+  else
+  {
+    return $emailIn;
+  }
+}
+
+function isValidEmail($emailIn)
+{
+  $isValid = true;
+  $atIndex = strrpos($emailIn, "@");
+  
+  if (is_bool($atIndex) && !$atIndex)
+  {
+    $isValid = false;
+  }
+  else
+  {
+    $domain = substr($emailIn, $atIndex+1);
+    $local = substr($emailIn, 0, $atIndex);
+    $localLen = strlen($local);
+    $domainLen = strlen($domain);
+    
+    if ($localLen < 1 || $localLen > 64)
+    {
+      // local part length exceeded
+      $isValid = false;
+    }
+    else if ($domainLen < 1 || $domainLen > 255)
+    {
+      // domain part length exceeded
+      $isValid = false;
+    }
+    else if ($local[0] == '.' || $local[$localLen-1] == '.')
+    {
+      // local part starts or ends with '.'
+      $isValid = false;
+    }
+    else if (preg_match('/\\.\\./', $local))
+    {
+      // local part has two consecutive dots
+      $isValid = false;
+    }
+    else if (!preg_match('/^[A-Za-z0-9\\-\\.]+$/', $domain))
+    {
+      // character not valid in domain part
+      $isValid = false;
+    }
+    else if(preg_match('/\\.\\./', $domain))
+    {
+      // domain part has two consecutive dots
+      $isValid = false;
+    }
+    else if(!preg_match('/^(\\\\.|[A-Za-z0-9!#%&`_=\\/$\'*+?^{}|~.-])+$/', str_replace("\\\\","",$local)))
+    {
+      // character not valid in local part unless 
+      // local part is quoted
+      if (!preg_match('/^"(\\\\"|[^"])+"$/', str_replace("\\\\","",$local)))
+      {
+        $isValid = false;
+      }
+    }
+    
+    if ($isValid && !(checkdnsrr($domain,"MX") || checkdnsrr($domain,"A")))
+    {
+      // domain not found in DNS
+      $isValid = false;
+    }
+  }
+
+  return $isValid;
+}
+
+?>
+
+
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
@@ -122,17 +262,15 @@ $(function () {
   <div id="event_disply_right">
     <h2>To receive Free Rate Update please type in your mobile number</h2>
     
-	<input type="text" class="input_subscribe" value="Enter your mobile number" onblur="if (this.value == '') {this.value = 'Enter your mobile number';}" onfocus="if (this.value == 'Enter your mobile number') {this.value = '';}">
-		
-	<p class="between">We value your privacy</p>
-    
-      <input type="text" class="input_subscribe" value="Enter your email (optional)" onblur="if (this.value == '') {this.value = 'Enter your email (optional)';}" onfocus="if (this.value == 'Enter your email (optional)') {this.value = '';}">
-      
-
-    </div>
+	<form name="subscribe_data" method="post">
+    <input name="number" type="text" class="input_subscribe" value="Enter your mobile number" onblur="if (this.value == '') {this.value = 'Enter your mobile number';}" onfocus="if (this.value == 'Enter your mobile number') {this.value = '';}">
+    <p class="between">We value your privacy</p>
+    <input name="email" type="text" class="input_subscribe" value="Enter your email (optional)" onblur="if (this.value == '') {this.value = 'Enter your email (optional)';}" onfocus="if (this.value == 'Enter your email (optional)') {this.value = '';}">
     <div id="button1">
-      <h1><a href="#">Register Now</a></h1>
+      <h1><a href="javascript: submitform()">Register Now</a></h1>
     </div>
+  </form>
+  <?php echo '<p>' . $output . '</p>' ?>
     
     <div class="image1">
 	<img src="images/ID-10086816.jpg">
@@ -197,20 +335,7 @@ $(function () {
   <!--sponsors_inner ends-->
   <div class="clear"></div>
 </div>
-<!--sponsors ends-->
-<!--  <div id="information">
-<div id="gallery">
-    <div class="image"> <img src="images/ID-1.png" width="160" height="95" align="left" alt="img" style=" margin-right: 15px; float:left; border: 5px solid #eeeded;"  />
-      <h6>Lorem ipsum dolor sit amet</h6>
-      <p>Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. </p>
-    </div>
-    <div class="image"> <img src="images/ID-2.png" width="160" height="95" align="left" alt="img" style=" margin-right: 15px; float:left;  border: 5px solid #eeeded;"  />
-      <h6>Lorem ipsum dolor sit amet</h6>
-      <p>Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. </p>
-    </div>
-  </div>
- <!--gallery ends-->
-  <!--subscribe ends-->
+
   <div class="clear"></div>
 </div>
 
@@ -232,5 +357,13 @@ $(function () {
 </div>
 <!--footer ends-->
 <div class="clear"></div>
+
+<script type="text/javascript">
+function submitform()
+{
+  document.subscribe_data.submit();
+}
+</script>
+
 </body>
 </html>
