@@ -12,7 +12,7 @@ if(isset($_POST['number']) && isset($_POST['email']))
     $number = $_POST['number'];
     $email = validateEmail($_POST['email']);
 
-    $conn = new mysqli('muhibindiancuisine.com', 'muhibind_2012', 'rzabul01', 'muhibind_01');
+    $conn = new mysqli('', '', '', '');
     
     $response = array();
     // get results 
